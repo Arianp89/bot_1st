@@ -1,4 +1,4 @@
-from confing import ai_token,proxy_2,proxy_1,API_TOKEN
+from confing import ai_token,proxy_2,proxy_1,API_TOKEN,ADMIN
 from DQL import *
 from DML import *
 # from requests_forwarder import setup_proxy
@@ -17,15 +17,12 @@ import datetime
 
 # setup_proxy(proxy_1)
 # setup_proxy(proxy_2)
-logging.basicConfig(level=logging.INFO, filename='project.log', format="%(asctime)s - %(levelname)s - %(message)s")
-
 
 
 telebot.apihelper.API_URL = 'http://tapi.bale.ai/bot{0}/{1}'
 
 bot=telebot.TeleBot(API_TOKEN)
 
-ADMIN=[60794725]
 creat_bot_data = dict()
 user_step_creat_bot =dict() # {cid: {'user_step':..., 'bot_token':..., 'total_cost:...'}, ...
 user_step_profile = dict()
@@ -158,9 +155,11 @@ def message_contact_us_handler(message):
 @bot.message_handler(func=lambda message:message.text==texts['about_us'])
 def message_contact_us_handler(message):
     cid=message.chat.id
+    number=0
     text='لیست ربات هایی که درست کردیم'+'\n'
     for token in get_product_token():
-        text+='@'+check_token(token)[1]+'\n'
+        number+=1
+        text+=number+':'+'@'+check_token(token)[1]+'\n'
     send_message(cid,text)
 
 @bot.message_handler(func=lambda message:message.text=='رفتن به صفحه اصلی')
@@ -442,7 +441,7 @@ def all_callback_query_handler(call):
                                        creat_bot_data[cid]['time_give'],
                                        int(file_name),creat_bot_data[id]['total_cost'],
                                        creat_bot_data[id]['FEE_PAID'],
-                                       creat_bot_data[id]['run_server'])
+                                       creat_bot_data[id]['run_server'],'no')
             random=take_random_karckter()
             add_sale(random,id)
             add_sale_row(random,project_id)
@@ -524,6 +523,19 @@ def all_callback_query_handler(call):
     elif data=='run_server':
         bot.answer_callback_query(call_id,'✔')
         creat_bot_data[cid]['run_server']=True
+    elif data.startswith('project'):
+        _,status=data.split('_')
+        markup=InlineKeyboardMarkup()
+        if status=='on':
+            for i in get_file_id_data()['no']:
+                markup.add(InlineKeyboardButton(f"{i['ID']}" ))
+            markup.add(InlineKeyboardButton('بازگشت به قبل',callback_data='back_check-project no'))
+            bot.edit_message_reply_markup(cid,mid,reply_markup=markup)
+        elif status=='off':
+            for i in get_file_id_data()['yes']:
+                markup.add(InlineKeyboardButton(f"{i['ID']}" ))
+            markup.add(InlineKeyboardButton('بازگشت به قبل',callback_data='back_check-project yes'))
+            bot.edit_message_reply_markup(cid,mid,reply_markup=markup)
     elif data.startswith('back'):
         _,to=data.split('_')
         if to=='profile':
@@ -539,13 +551,12 @@ def all_callback_query_handler(call):
             text+="شماره"+':'+get_user_data(cid)['phone']
             bot.edit_message_text(text,cid,mid,reply_markup=markup)
             bot.edit_message_text('','',)
-    elif data.startswith('project'):
-        _,status=data.split('_')
-        if status=='on':
-            pass
-        elif status=='off':
-            pass
-
+        elif to.startswith('check-project'):
+            markup=InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton('پروژه های فعال ',callback_data='project_on'))
+            markup.add(InlineKeyboardButton('پروژه های تمام',callback_data='project_off'))
+            text='از منوی زیر انتخاب کن'+":"
+            bot.edit_message_text(text,cid,mid,reply_markup=markup)
     
 
 
