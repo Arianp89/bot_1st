@@ -4,8 +4,6 @@ import string
 import random
 from confing import db_confing,database_name
 
-logging.basicConfig(level=logging.INFO, filename='project.log', format="%(asctime)s - %(levelname)s - %(message)s")
-
 
 def take_random_karckter():
     requence=string.ascii_lowercase + string.ascii_uppercase + string.digits
@@ -23,11 +21,11 @@ def add_customer( id ,name , phone ):
     logging.info(f' add new customer by id:{id},name{name}')
     return cur.lastrowid
 
-def add_new_product(ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER=None):
+def add_new_product(ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER=None,STATUS=None):
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor()
-    SQL_Query = "INSERT INTO PRODUCT (ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER) VALUES (%s,%s,%s,%s,%s,%s,%s);"
-    cur.execute(SQL_Query, (ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER))
+    SQL_Query = "INSERT INTO PRODUCT (ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER,STATUS) VALUES (%s,%s,%s,%s,%s,%s,%s,%s);"
+    cur.execute(SQL_Query, (ID,BOT_TOKEN,TIME_GIVE,BOT_SPECE_SOUND_ID,TOTAL_COST,FEE_PAID,RAN_IN_SERSER,STATUS))
     conn.commit()
     cur.close()
     conn.close()
@@ -98,7 +96,3 @@ def add_new_project(customer_id,BOT_TOKEN,BOT_SPECE_TEXT,BOT_SPECE_SOUND_ID,TOTA
     add_sale(random,customer_id)
     add_sale_row(random,project_id)
     return random
-
-
-
-add_new_product(None,'kjhx',14,5555555555555,5000000,2500000)

@@ -28,12 +28,19 @@ def get_bot_data(cid):
 def get_file_id_data():
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor(dictionary=True)
-    SQL_Query = "SELECT * FROM PRODUCT WHERE PROJECT_FILE_ID=%s;"
-    cur.execute(SQL_Query, (1,))
+    SQL_Query = "SELECT * FROM PRODUCT;"
+    cur.execute(SQL_Query)
     data = cur.fetchall()
     cur.close()
     conn.close()
-    return [row['ID'] for row in data]   
+    datas =[]
+    datas_no =[]
+    for date in data:
+        if date['STATUS']=='no':
+            datas_no.append(date)
+        else:
+            datas.append(date)
+    return {'no': datas_no, 'yes': datas}
 
 
 def get_product_data_A(sale_id):
@@ -113,6 +120,3 @@ def check_time():
                 return get_sale_id(key)
         time.sleep(120)
 
-
-
-print(get_file_id_data())

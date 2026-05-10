@@ -3,8 +3,6 @@ import mysql.connector
 from confing import *
 
 
-logging.basicConfig(level=logging.INFO, filename='project.log', format="%(asctime)s - %(levelname)s - %(message)s")
-
 
 
 def create_database(database_name):
@@ -52,6 +50,7 @@ def create_table_product(database_name):
     `TOTAL_COST`            INT NOT NULL,
     `FEE_PAID`              INT NOT NULL,
     `RAN_IN_SERSER`         VARCHAR(4),
+    `STATUS`                TEXT,
     `REGISTER_DATE`         DATETIME DEFAULT CURRENT_TIMESTAMP,
     `LAST_UPDATE`           DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );"""
