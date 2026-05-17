@@ -9,16 +9,16 @@ def take_random_karckter():
     requence=string.ascii_lowercase + string.ascii_uppercase + string.digits
     return str(''.join(random.choices(requence,k=6)))
 
-def add_customer( id ,name , phone ):
+def add_customer(id,name,phone):
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor()
-    SQL_Query = "INSERT INTO CUSTOMER (ID,NAME,PHONE) VALUES (%s,%s,%s);"
-    cur.execute(SQL_Query, (id,name,phone ))
+    SQL_Query = "UPDATE CUSTOMER SET NAME=%s,PHONE=%s where ID=%s;"
+    cur.execute(SQL_Query, (name,phone,id ))
     conn.commit()
     cur.close()
     conn.close()
-    print(f'customer {name} data ')
-    logging.info(f' add new customer by id:{id},name{name}')
+    print(f'customer {id} add ')
+    logging.info(f' add new customer by id:{id}')
     return cur.lastrowid
 
 
@@ -118,3 +118,38 @@ def chenge_status_product(status,product_id):
     cur.close()
     conn.close()
     logging.info('admin add file project')
+
+
+
+def add_customer_black_list(customer_id):
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor()
+    SQL_Query = "UPDATE CUSTOMER SET BLACK_LIST=%s WHERE ID=%s;"
+    cur.execute(SQL_Query, ('yes',customer_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    logging.info(f'customer {customer_id} add black list')
+
+def came_customer_black_list(customer_id):
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor()
+    SQL_Query = "UPDATE CUSTOMER SET BLACK_LIST=%s WHERE ID=%s;"
+    cur.execute(SQL_Query, (None,customer_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    logging.info(f'customer {customer_id} came from the black list')
+
+
+def register_user(cid):
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM CUSTOMER WHERE ID=%s", (cid,))
+    user = cur.fetchone()
+    if user==None:
+        cur.execute("INSERT INTO CUSTOMER (ID) VALUES (%s)", (cid,))
+        conn.commit()
+    cur.close()
+    conn.close()
+    print(1)

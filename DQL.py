@@ -68,6 +68,19 @@ def get_product_data(product_id):
     return data
 
 
+
+def get_all_product_data():
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor(dictionary=True)
+    SQL_QUERY = "SELECT * FROM PRODUCT;"
+    cur.execute(SQL_QUERY)
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+
+
 def get_all_token():
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor(dictionary=True)
@@ -101,29 +114,6 @@ def get_sale_id(product_id):
     return data
 
 
-def get_time(product_id):
-    conn = mysql.connector.connect(**db_confing, database=database_name)
-    cur = conn.cursor(dictionary=True) 
-    SQL_Query = "SELECT TIME_GIVE FROM PRODUCT WHERE ID=%s;"
-    cur.execute(SQL_Query,(product_id,))
-    data = cur.fetchone()
-    cur.close()
-    conn.close()
-    return data
-
-def check_time():
-    ban_id=[]
-    while True:
-        today = datetime.datetime.now()
-        for key,val in get_all_register_data().items():
-            hundred_days_delta = datetime.timedelta(days=get_time(key)-3)
-            previous_date = val + hundred_days_delta
-            if previous_date==today.strftime('%Y/%m/%d') and  key not in ban_id:
-                ban_id.append(key)
-                print(key)
-                return get_sale_id(key)
-        time.sleep(120)
-
 def get_customer_id(sale_id):
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor(dictionary=True) 
@@ -143,3 +133,40 @@ def have_email(email):
     cur.close()
     conn.close()
     return data
+
+
+
+def check_black_list(CUSTOMER_ID):
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor(dictionary=True) 
+    SQL_Query = "SELECT BLACK_LIST FROM CUSTOMER  WHERE ID=%s;"
+    cur.execute(SQL_Query,(CUSTOMER_ID,))
+    data = cur.fetchone()
+    cur.close()
+    conn.close()
+    if data==None:
+        return False
+    if data['BLACK_LIST']=='yes':
+        return True
+    return False
+
+def get_all_cid_from_sale_data():
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor(dictionary=True)
+    SQL_Query = "SELECT CUSTOMER_ID FROM SALE;"
+    cur.execute(SQL_Query)
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [row['CUSTOMER_ID'] for row in data]
+
+
+def get_all_regester_date():
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor(dictionary=True)
+    SQL_Query = "SELECT ID, REGISTER_DATE,TIME_GIVE FROM PRODUCT;"
+    cur.execute(SQL_Query)
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {row['ID']: [row['REGISTER_DATE'], row['TIME_GIVE']] for row in data}
