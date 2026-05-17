@@ -62,8 +62,8 @@ def customer_markup():
 
 def admin_markup():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(texts['send_location_file'], texts['check_project'])
-    markup.add(texts['send_message_to_customer'])
+    markup.add(texts['check_customer'], texts['check_project'])
+    markup.add(texts['send_location_file'],texts['send_message_to_customer'])
     markup.add(texts['ai_for_admin'])
     return markup
 
@@ -89,7 +89,7 @@ def check_token(token):
                 print(f"Error: {data['description']}")
             return False
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return False
 
 
@@ -100,6 +100,7 @@ def check_token(token):
 def listener(messages):
     for m in messages:
         # print(m)
+        register_user(m.chat.id)
         if m.content_type == 'text':
             print(f"{m.chat.first_name} [{str(m.chat.id)}]: {m.text}")
             logging.info(f"{m.chat.first_name} [{str(m.chat.id)}]: {m.text}")
@@ -119,43 +120,49 @@ bot.set_update_listener(listener)
 @bot.message_handler(commands=['start'])
 def message_start_handler(message):
     cid=message.chat.id
-    if cid in ADMIN:
-        send_message(cid, texts['admin_welcome'], reply_markup=admin_markup())
-    else:    
-        bot.send_message(cid, texts['user_welcome'], reply_markup=customer_markup())
+    register_user(cid)
+    if check_black_list(cid)==False:
+        if cid in ADMIN:
+            send_message(cid, texts['admin_welcome'], reply_markup=admin_markup())
+        else:
+            bot.send_message(cid, texts['user_welcome'], reply_markup=customer_markup())
 
 @bot.message_handler(func=lambda message:message.text==texts['contact_us'])
 def message_contact_us_handler(message):
     cid=message.chat.id
-    send_message(cid, texts['contact_info'])
+    if check_black_list(cid)==False:
+        send_message(cid, texts['contact_info'])
 
 @bot.message_handler(func=lambda message:message.text==texts['about_us'])
 def message_about_us_handler(message):
     cid=message.chat.id
-    number=0
-    text = texts['bot_list_header']
-    for token in get_all_token():
-        number+=1
-        check_res = check_token(token)
-        if check_res:
-            text += f"{number}: @{check_res[1]}\n"
-    send_message(cid, text)
+    if check_black_list(cid)==False:
+        number=0
+        text = texts['bot_list_header']
+        for token in get_all_token():
+            number+=1
+            check_res = check_token(token)
+            if check_res:
+                text += f"{number}: @{check_res[1]}\n"
+        send_message(cid, text)
 
 @bot.message_handler(func=lambda message:message.text==texts['go_home'])
 def back_to_home_handler(message):
     cid=message.chat.id
-    if cid in user_step_creat_bot:
-        user_step_creat_bot.pop(cid)
-    bot.send_message(cid, texts['choose_from_menu'], reply_markup=customer_markup())
+    if check_black_list(cid)==False:
+        if cid in user_step_creat_bot:
+            user_step_creat_bot.pop(cid)
+        bot.send_message(cid, texts['choose_from_menu'], reply_markup=customer_markup())
 
 @bot.message_handler(func=lambda message:message.text==texts['ai_for_admin'])
 def ai_handler(message):
     cid = message.chat.id
-    if cid in ADMIN:
-        bot.send_message(cid, texts['enter_ai_prompt'])
-        user_step_ai[cid]='A'
-    else:
-        send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
+    if check_black_list(cid)==False:
+        if cid in ADMIN:
+            bot.send_message(cid, texts['enter_ai_prompt'])
+            user_step_ai[cid]='A'
+        else:
+            send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
 
 
 
@@ -173,16 +180,17 @@ def ai_handler_A(message):
 @bot.message_handler(func=lambda message: message.text==texts['create_bot'])
 def creat_bot_handler(message):
     cid = message.chat.id
-    markup=InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(texts['yes'], callback_data='run server_yes'))
-    markup.add(InlineKeyboardButton(texts['no'], callback_data='run server_no'))
-    if get_customer_data(cid) == None:
-        send_message(cid, texts['enter_name'])
-        creat_bot_data[cid]={'name':None,'bot_token':None,'total_cost':None,'time_give':None,'run_server':None,'voice_file_id':None,'photo_file_id':None,'email':None,'password':None}
-        user_step_creat_bot[cid]='A'
-    else:
-        bot.send_message(cid, texts['ask_run_server'], reply_markup=markup)
-        creat_bot_data[cid]={'name':None,'bot_token':None,'total_cost':None,'time_give':None,'run_server':None,'voice_file_id':None,'photo_file_id':None,'email':None,'password':None}
+    if check_black_list(cid)==False:
+        markup=InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(texts['yes'], callback_data='run server_yes'))
+        markup.add(InlineKeyboardButton(texts['no'], callback_data='run server_no'))
+        if get_customer_data(cid)['name'] == None:
+            send_message(cid, texts['enter_name'])
+            creat_bot_data[cid]={'name':None,'bot_token':None,'total_cost':None,'time_give':None,'run_server':None,'voice_file_id':None,'photo_file_id':None,'email':None,'password':None}
+            user_step_creat_bot[cid]='A'
+        else:
+            bot.send_message(cid, texts['ask_run_server'], reply_markup=markup)
+            creat_bot_data[cid]={'name':None,'bot_token':None,'total_cost':None,'time_give':None,'run_server':None,'voice_file_id':None,'photo_file_id':None,'email':None,'password':None}
 
 @bot.message_handler(func=lambda message:user_step_creat_bot.get(message.chat.id) == 'A')
 def create_bot_handler_A(message):
@@ -200,10 +208,11 @@ def create_bot_handler_B_contact(message):
     markup=InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(texts['yes'], callback_data='run server_yes'))
     markup.add(InlineKeyboardButton(texts['no'], callback_data='run server_no'))
-    if get_customer_data(cid) == None:
+    if get_customer_data(cid)['name'] == None:
         if cid==message.contact.user_id:
-            phone=phone[2:] if phone.startswith('98') else phone
-            add_customer(cid,creat_bot_data[cid]['name'],phone)
+            if phone.startswith('98') :
+                phone=phone[2:] 
+        add_customer(cid,creat_bot_data[cid]['name'],int(phone))
     bot.send_message(cid, texts['ask_run_server'], reply_markup=markup)
 
 @bot.message_handler(func=lambda message: user_step_creat_bot.get(message.chat.id)== 'B')
@@ -213,12 +222,12 @@ def create_bot_handler_B_text(message):
     markup=InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(texts['yes'], callback_data='run server_yes'))
     markup.add(InlineKeyboardButton(texts['no'], callback_data='run server_no'))
-    if get_customer_data(cid) == None:
+    if get_customer_data(cid)['name'] == None:
         if phone[:2]=='98':
             phone=phone[2:]
         elif phone[:1]=='0':
             phone=phone[1:]
-        add_customer(cid,creat_bot_data[cid]['name'],phone)
+        add_customer(cid,creat_bot_data[cid]['name'],int(phone))
     bot.send_message(cid, texts['ask_run_server'], reply_markup=markup)
 
 @bot.message_handler(func=lambda message: user_step_creat_bot.get(message.chat.id)== 'C')
@@ -249,7 +258,7 @@ def create_bot_hadler_C(message):
             user_step_creat_bot[cid]='B'
     except Exception as e:
         logging.error('error to split token')
-        print('eroror', e)
+        logging.error('eroror', e)
         user_step_creat_bot[cid]='B'
 
 
@@ -283,19 +292,47 @@ def user_step_create_bot_handler_E(message):
         text = texts['admin_payment_received'].format(name=get_customer_data(cid)['name'], amount=creat_bot_data[cid]['total_cost']/2)
         bot.send_photo(ad, file_id, text, reply_markup=markup)
 
+
+@bot.message_handler(func=lambda message:user_step_creat_bot.get(message.chat.id)=='F')
+def user_step_create_bot_handler_F(message):
+    cid=message.chat.id
+    customer_id=int(creat_bot_data[cid])
+    file_name = str(time.time()).replace('.', '')
+    project_id=add_new_product(None,creat_bot_data[customer_id]['token'],
+                                int(creat_bot_data[customer_id]['time_give']),
+                                int(file_name),creat_bot_data[customer_id]['total_cost'],
+                                int(message.text),
+                                creat_bot_data[customer_id]['run_server'],
+                                'no')
+    sale_id=take_random_karckter()
+    add_sale(sale_id,customer_id)
+    add_sale_row(sale_id,project_id)
+    user_step_creat_bot.pop(cid, None)
+    creat_bot_data.pop(cid, None)
+    bot.send_message(customer_id, texts['order_registered'].format(id=sale_id), reply_markup=customer_markup())
+    bot.send_message(cid,'پروژه شما با موفقیت ثبت شد و استارت خورد', reply_markup=admin_markup())
+
+
 @bot.message_handler(func=lambda message:message.text==texts['profile'])
 def profile_handler(message):
     cid=message.chat.id
-    if get_customer_data(cid)==None:
-        bot.send_message(cid, texts['no_info_found'])
-    else:
-        markup=InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton(texts['edit_bot'], callback_data='change_information'))
-        markup.add(InlineKeyboardButton(texts['my_bots'], callback_data='my_bots'))
-        text = texts['profile_info'].format(name=get_customer_data(cid)['name'], phone=get_customer_data(cid)['phone'])
-        msg=send_message(cid, text, reply_markup=markup, parse_mode='HTML')
-        user_step_profile[cid] = 'A'
-        user_step_profile_mid[cid] = msg
+    if check_black_list(cid)==False:
+        if get_customer_data(cid)==None:
+            bot.send_message(cid, texts['no_info_found'])
+        else:
+            if get_customer_data(cid)['name']==None:
+                name='ثبت نشده'
+                phone='ثبت نشده'
+            else:
+                name=get_customer_data(cid)['name']
+                phone=get_customer_data(cid)['phone']
+            markup=InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton(texts['edit_bot'], callback_data='change_information'))
+            markup.add(InlineKeyboardButton(texts['my_bots'], callback_data='my_bots'))
+            text = texts['profile_info'].format(name=name, phone=phone)
+            msg=send_message(cid, text, reply_markup=markup, parse_mode='HTML')
+            user_step_profile[cid] = 'A'
+            user_step_profile_mid[cid] = msg
 
 @bot.message_handler(func=lambda message:user_step_profile.get(message.chat.id)=='A')
 def user_step_profile_A(message):
@@ -318,28 +355,50 @@ def user_step_profile_B(message):
 @bot.message_handler(func=lambda message:message.text==texts['check_project'])
 def check_project_handler_admin(message):
     cid = message.chat.id
-    if cid in ADMIN:
-        markup=InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton(texts['active_projects'], callback_data='projects_on'))
-        markup.add(InlineKeyboardButton(texts['finished_projects'], callback_data='projects_off'))
-        bot.send_message(cid, texts['admin_choose_menu'], reply_markup=markup)
-    else:
-        send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
+    if check_black_list(cid)==False:
+        if cid in ADMIN :
+            markup=InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton(texts['active_projects'], callback_data='projects_on'))
+            markup.add(InlineKeyboardButton(texts['finished_projects'], callback_data='projects_off'))
+            all_project=0
+            on_project=0
+            off_project=0
+            for project in get_all_product_data():
+                all_project+=1
+                if project['STATUS']=='no':
+                    on_project+=1
+                else:
+                    off_project+=1
+            text=f"""کل پروژه ها :{all_project}
+پروژه های فعال :{on_project}
+پروژه های انجام شده :{off_project}
+"""
+            bot.send_message(cid, text, reply_markup=markup)
+        else:
+            send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
 
 @bot.message_handler(func=lambda message:message.text==texts['send_location_file'])
 def send_location_file_handler(message):
     cid=message.chat.id
-    if cid in ADMIN:
-        markup=InlineKeyboardMarkup()
-        for i in get_sale_row_data():
-            product_id=get_product_id_f_sale_row(i)
-            product_data=get_product_data(product_id['PRODUCT_ID'])
-            if product_data != None:
-                if product_data['STATUS']=='no':
-                    markup.add(InlineKeyboardButton(f"{i}" ,callback_data=f"file id_{i}"))
-        bot.send_message(cid, texts['missing_file_projects'], reply_markup=markup)
-    else:
-        send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
+    if check_black_list(cid)==False:
+        if cid in ADMIN:
+            no=0
+            for i in get_all_product_data():
+                if i['STATUS']=='no':
+                    no+=1
+            if no!=0:
+                markup=InlineKeyboardMarkup()
+                for i in get_sale_row_data():
+                    product_id=get_product_id_f_sale_row(i)
+                    product_data=get_product_data(product_id['PRODUCT_ID'])
+                    if product_data != None:
+                        if product_data['STATUS']=='no':
+                            markup.add(InlineKeyboardButton(f"{i}" ,callback_data=f"file id_{i}"))
+                bot.send_message(cid, texts['missing_file_projects'], reply_markup=markup)
+            else:
+                bot.send_message(cid,'هیچ پروژه فعالی ندارید')
+        else:
+            send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
 
 @bot.message_handler(func=lambda message:admin_step_send_location_file.get(message.chat.id)=='A')
 def send_location_file_handler_A(message):
@@ -363,10 +422,11 @@ def send_location_file_handler_A(message):
 @bot.message_handler(func=lambda message:message.text==texts['send_message_to_customer'])
 def admin_send_file_to_customer_handler(message):
     cid=message.chat.id
-    markup=InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(texts['send_to_all'], callback_data='send file_all'))
-    markup.add(InlineKeyboardButton(texts['send_to_one'], callback_data="send file_one"))
-    bot.send_message(cid, texts['admin_choose_menu'], reply_markup=markup)
+    if check_black_list(cid)==False:
+        markup=InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(texts['send_to_all'], callback_data='send file_all'))
+        markup.add(InlineKeyboardButton(texts['send_to_one'], callback_data="send file_one"))
+        bot.send_message(cid, texts['admin_choose_menu'], reply_markup=markup)
     
 @bot.message_handler(func=lambda message:admin_send_message_to_customer.get(message.chat.id) in ['A', 'B'])
 def admin_send_message_to_customer_handler_A_B(message):
@@ -394,6 +454,33 @@ def admin_send_message_to_customer_handler_A_B(message):
         bot.send_message(customer_id, message.text)
         bot.send_message(cid, texts['message_sent_success'])
     admin_send_message_to_customer.pop(cid)
+
+
+
+@bot.message_handler(func=lambda message:message.text==texts['check_customer'])
+def check_customer_handler(message):
+    cid=message.chat.id
+    if check_black_list(cid)==False:
+        customer_num=0
+        yes_black_list=0
+        no_black_list=0
+        for i in get_all_customer_data():
+            customer_num+=1
+            if i["BLACK_LIST"]==None:
+                no_black_list+=1
+            else:
+                yes_black_list+=1
+        text=f"""تعداد کل کاربران:{customer_num}
+تعداد کاربران مسدود شده :{yes_black_list}
+تعداد کاربران مسدود نه شده :{no_black_list}
+"""
+        markup=InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton('مشاهده کاربران',callback_data='customer_data'))
+        bot.send_message(cid,text,reply_markup=markup)
+
+
+
+
 
 @bot.callback_query_handler(func=lambda call:True)
 def all_callback_query_handler(call):
@@ -436,22 +523,32 @@ def all_callback_query_handler(call):
         if call_data=='true':
             bot.answer_callback_query(call_id,'✔')
             id=int(id)
-            bot.send_message(id, texts['order_registered'], reply_markup=customer_markup())
             file_name = str(time.time()).replace('.', '')
-            project_id=add_new_product(None,creat_bot_data[int(id)]['token'],
-                                       int(creat_bot_data[int(id)]['time_give']),
-                                       int(file_name),creat_bot_data[int(id)]['total_cost'],
+            project_id=add_new_product(None,creat_bot_data[id]['token'],
+                                       int(creat_bot_data[id]['time_give']),
+                                       int(file_name),creat_bot_data[id]['total_cost'],
                                        int(creat_bot_data[id]['FEE_PAID']),
                                        creat_bot_data[id]['run_server'],
                                        'no')
-            random=take_random_karckter()
-            add_sale(random,int(id))
-            add_sale_row(random,project_id)
+            sale_id=take_random_karckter()
+            add_sale(sale_id,id)
+            add_sale_row(sale_id,project_id)
             user_step_creat_bot.pop(id, None)
             creat_bot_data.pop(id, None)
+            bot.send_message(id, texts['order_registered'].format(id=sale_id), reply_markup=customer_markup())
         elif call_data=='false':
+            markup=InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton('مبلغ وارد شده اشتباه بود',callback_data=f'entered_wrong {id}'))
+            markup.add(InlineKeyboardButton(' عکس فیش نبود',callback_data=f'photo_n_receipt {id}'))
+            bot.send_message(cid,' چرا این کاربر تایید نشد',reply_markup=markup)
             bot.answer_callback_query(call_id,'✖')
         bot.delete_message(cid,mid)
+
+    elif data.startswith('entered_wrong'):
+        _,id=data.split()
+        user_step_creat_bot[cid]='F'
+        creat_bot_data[cid]=id
+        bot.edit_message_text('کاربر چقدر از این مبلغ را پرداخت کرد',cid,mid)
 
     elif data=='change_information':
         markup=InlineKeyboardMarkup()
@@ -479,7 +576,7 @@ def all_callback_query_handler(call):
 
     elif data.startswith('bot data'):
         _,id=data.split('_')
-        product_id=get_product_id_f_sale_row(id)
+        product_id=get_product_id_f_sale_row(id)['PRODUCT_ID']
         product_data=get_product_data(product_id)
         svr = texts['yes'] if product_data['RAN_IN_SERSER'] else texts['no']
         text = texts['bot_data_details'].format(
@@ -527,8 +624,16 @@ def all_callback_query_handler(call):
         elif status=='one':
             markup=InlineKeyboardMarkup()
             for i in get_all_customer_data():
-                markup.add(InlineKeyboardButton(i['NAME'],callback_data=f"send message_{i['ID']}"),
-                           InlineKeyboardButton(i['PHONE'],callback_data=f"send message_{i['ID']}"))
+                if i['NAME']==None:
+                    name='ثبت نشوده'
+                    phone='ثبت نشوده'
+                else:
+                    name=i['NAME']
+                    phone=i['PHONE']
+                markup.add(InlineKeyboardButton(str(i['ID']),callback_data=f"send message_{i['ID']}"),
+                           InlineKeyboardButton(name,callback_data=f"send message_{i['ID']}"),
+                           InlineKeyboardButton(phone,callback_data=f"send message_{i['ID']}")
+                           )
             bot.edit_message_text(texts['choose_user_to_msg'],cid,mid,reply_markup=markup)
             
     elif data.startswith('send message'):
@@ -536,6 +641,50 @@ def all_callback_query_handler(call):
         admin_send_message_to_customer_data[cid]=customer_id
         admin_send_message_to_customer[cid]='B'
         bot.edit_message_text(texts['enter_message_to_send'],cid,mid)
+
+    elif data=='customer_data':
+        markup=InlineKeyboardMarkup()
+        for i in get_all_customer_data():
+            if i['NAME']==None:
+                name='ثبت نشوده'
+                phone='ثبت نشوده'
+            else:
+                name=i['NAME']
+                phone=i['PHONE']
+            markup.add(InlineKeyboardButton(str(i['ID']),callback_data=f"see customer_{i['ID']}"),
+                        InlineKeyboardButton(name,callback_data=f"see customer_{i['ID']}"),
+                        InlineKeyboardButton(str(phone),callback_data=f"see customer_{i['ID']}")
+                        )
+        text='لطفا کاربر مورد نظر را از منوی زیر انتخاب کنید'
+        bot.edit_message_text(text,cid,mid,reply_markup=markup)
+
+    elif data.startswith('see customer'):
+        _,customer_id=data.split('_')
+        customer_data=get_customer_data(customer_id)
+        markup=InlineKeyboardMarkup()
+        if check_black_list(customer_id)==False:
+            markup.add(InlineKeyboardButton(' مسدود کردن کاربر',callback_data=f'closed customer_{customer_data['id']}'))
+        else:
+            markup.add(InlineKeyboardButton('برداشتن از مسدودیت',callback_data=f'unclosed customer_{customer_data['id']}'))
+        project_num=0
+        for i in get_sale_id_b_cid(customer_id):
+            project_num+=1
+        text=f"""آیدی کاربر :{customer_data['id']}
+نام کاربر :{customer_data['name'] if customer_data['name']!=None else 'ثبت نام نشده'}
+شماره تماس :{customer_data['phone'] if customer_data['phone']!=None else 'ثبت نام نشده'}
+تعداد پروژه ها: {project_num}
+ وضعیت مسدودیت :{'مسدود شده' if check_black_list(customer_id)==True else 'مسدود نشده'}
+"""
+        bot.edit_message_text(text,cid,mid,reply_markup=markup)
+    elif data.startswith('closed customer'):
+        _,customer_id=data.split('_')
+        add_customer_black_list(customer_id)
+        bot.send_message(cid,'کاربر مورد نظر با موفقیت مسدود شد')
+    
+    elif data.startswith('unclosed customer'):
+        _,customer_id=data.split('_')
+        came_customer_black_list(customer_id)
+        bot.send_message(cid,'کاربر مورد نظر  با موفقیت لغو مسدودیت شد')
 
     elif data.startswith('back'):
         _,to=data.split('_')
@@ -559,11 +708,32 @@ def all_callback_query_handler(call):
 @bot.message_handler(func=lambda message: True)
 def all_message_handler(message):
     cid=message.chat.id
-    if cid in ADMIN:
-        send_message(cid, texts['invalid_command'], reply_markup=admin_markup())
-    else:
-        send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
+    if check_black_list(cid)==False:
+        if cid in ADMIN:
+            send_message(cid, texts['invalid_command'], reply_markup=admin_markup())
+        else:
+            send_message(cid, texts['invalid_command'], reply_markup=customer_markup())
+
+
+def check_time(day,sleep):
+    bans_time=[]
+    while True:
+        now = datetime.datetime.now().strftime('%Y-%m-%d')
+        for id, (times, time_give) in get_all_regester_date().items():
+            hundred_days_delta = datetime.timedelta(days=time_give-day)
+            previous_date = times + hundred_days_delta
+            previous_date = previous_date.strftime('%Y-%m-%d')
+            if now == previous_date and id not in bans_time:
+                for ad in ADMIN:
+                    time.sleep(2)
+                    bot.send_message(ad, f'کاربر با آیدی {get_sale_id(id)['SALE_ID']} در تاریخ {times} ثبت نام کرده است و باید بررسی شود که آیا پروژه ای ثبت کرده یا نه')
+        time.sleep(sleep)
+
+t1 = threading.Thread(target=check_time, args=(3,3600*24))
+t1.start()
+
 
 print('System is running...')
 logging.info('System is running...')
 bot.infinity_polling()
+logging.warning('System stopped!')
