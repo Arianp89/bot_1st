@@ -12,8 +12,8 @@ def take_random_karckter():
 def add_customer( id ,name , phone ):
     conn = mysql.connector.connect(**db_confing, database=database_name)
     cur = conn.cursor()
-    SQL_Query = "INSERT INTO CUSTOMER (ID,NAME, PHONE) VALUES (%s , %s , %s);"
-    cur.execute(SQL_Query, (id , name, phone ))
+    SQL_Query = "INSERT INTO CUSTOMER (ID,NAME,PHONE) VALUES (%s,%s,%s);"
+    cur.execute(SQL_Query, (id,name,phone ))
     conn.commit()
     cur.close()
     conn.close()
