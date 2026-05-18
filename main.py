@@ -22,7 +22,9 @@ bot=telebot.TeleBot(API_TOKEN)
 user_step_ai=dict()
 creat_bot_data = dict()
 user_step_profile = dict()
-user_step_creat_bot =dict() 
+user_step_creat_bot =dict()
+user_step_contact_us=dict()
+contact_us_data=dict()
 user_step_profile_mid = dict()
 admin_send_location_data=dict()
 creat_bot_data_total_cost=dict()
@@ -131,7 +133,38 @@ def message_start_handler(message):
 def message_contact_us_handler(message):
     cid=message.chat.id
     if check_black_list(cid)==False:
-        send_message(cid, texts['contact_info'])
+        user_step_contact_us[cid] = 'A'
+        markup=InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(texts['yes'],callback_data='contact us_yes'),
+                   InlineKeyboardButton(texts['no'],callback_data='contact us_no'))
+        bot.send_message(cid, 'آیا می‌خواهید پیام خود را برای ما ارسال کنید؟', reply_markup=markup)
+
+@bot.message_handler(func=lambda message:user_step_contact_us.get(message.chat.id)=='A')
+def message_contact_us_handler_A(message):
+    cid=message.chat.id
+    customer_message=message
+    markup=InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton('پاسخ دادن به کاربر',callback_data=f'response contact_{cid}'))
+    text =f"""کاربر :{get_customer_data(cid)['name']}
+پیام :{customer_message.text if customer_message.content_type=='text' else 'غیر متنی'}ارسال کرد
+"""
+    for ad in ADMIN:
+        bot.send_message(ad, text, reply_markup=markup)
+        break
+    user_step_contact_us.pop(cid)
+    send_message(cid, 'پیام شما با موفقیت برای ما ارسال شد')
+
+
+
+@bot.message_handler(func=lambda message:user_step_contact_us.get(message.chat.id)=='B')
+def B_contact_us_handler(message):
+    cid=message.chat.id
+    message_text=message.text
+    customer_id=contact_us_data.get(cid)
+    if customer_id!=None:
+        bot.send_message(customer_id, f"پاسخ تیم پشتیبانی :\n{message_text}")
+        send_message(cid, 'پاسخ شما با موفقیت برای کاربر ارسال شد', reply_markup=admin_markup())
+
 
 @bot.message_handler(func=lambda message:message.text==texts['about_us'])
 def message_about_us_handler(message):
@@ -317,23 +350,19 @@ def user_step_create_bot_handler_F(message):
 def profile_handler(message):
     cid=message.chat.id
     if check_black_list(cid)==False:
-        if get_customer_data(cid)==None:
-            bot.send_message(cid, texts['no_info_found'])
+        markup=InlineKeyboardMarkup()
+        if get_customer_data(cid)['phone']==None:
+            name='ثبت نشده'
+            phone='ثبت نشده'
+            markup.add(InlineKeyboardButton('وارد کردن اطلاعات',callback_data='send_info'))
         else:
-            markup=InlineKeyboardMarkup()
-            if get_customer_data(cid)['phone']==None:
-                name='ثبت نشده'
-                phone='ثبت نشده'
-                markup.add(InlineKeyboardButton('وارد کردن اطلاعات',callback_data='send_info'))
-            else:
-                name=get_customer_data(cid)['name']
-                phone=get_customer_data(cid)['phone']
-                markup.add(InlineKeyboardButton(texts['edit_bot'], callback_data='change_information'))
-                markup.add(InlineKeyboardButton(texts['my_bots'], callback_data='my_bots'))
-            text = texts['profile_info'].format(name=name, phone=phone)
-            msg=send_message(cid, text, reply_markup=markup, parse_mode='HTML')
-            user_step_profile[cid] = 'A'
-            user_step_profile_mid[cid] = msg
+            name=get_customer_data(cid)['name']
+            phone=get_customer_data(cid)['phone']
+            markup.add(InlineKeyboardButton(texts['edit_bot'], callback_data='change_information'))
+            markup.add(InlineKeyboardButton(texts['my_bots'], callback_data='my_bots'))
+        text = texts['profile_info'].format(name=name, phone=phone)
+        msg=send_message(cid, text, reply_markup=markup, parse_mode='HTML')
+        user_step_profile_mid[cid] = msg
 
 @bot.message_handler(func=lambda message:user_step_profile.get(message.chat.id)=='A')
 def user_step_profile_A(message):
@@ -521,7 +550,7 @@ def all_callback_query_handler(call):
     cid=call.message.chat.id
     mid = call.message.message_id
     data = call.data
-
+    print(f'call={call.message.from_user.first_name} [{cid}]:{data}')
     if data.startswith('run server'):
         _,run_server=data.split('_')
         if run_server=='yes':
@@ -535,6 +564,23 @@ def all_callback_query_handler(call):
             creat_bot_data[cid]['run_server']=None
             bot.edit_message_text(chat_id=cid,message_id=mid,text=texts['enter_bot_details_no_server'])
             user_step_creat_bot[cid]='C'
+
+    elif data.startswith('contact us'):
+        _,answer=data.split('_')
+        if answer=='yes':
+            bot.answer_callback_query(call_id,'✔')
+            bot.edit_message_text('لطفا پیام خود را برای ما ارسال کنید :',cid,mid)
+        elif answer=='no':
+            bot.answer_callback_query(call_id,'✖')
+            bot.delete_message(cid,mid)
+            user_step_contact_us.pop(cid)
+    
+    elif data.startswith('response contact'):
+        _,customer_id=data.split('_')
+        user_step_contact_us[cid]='B'
+        contact_us_data[cid]=customer_id
+        bot.edit_message_text('لطفا پاسخ خود را برای کاربر ارسال کنید',cid,mid)
+
             
     elif data.startswith('voice'):
         _,DATA,id=data.split('_')
