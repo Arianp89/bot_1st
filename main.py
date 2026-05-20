@@ -559,10 +559,10 @@ def check_customer_handler(message):
         no_black_list=0
         for i in get_all_customer_data():
             customer_num+=1
-            if i["BLACK_LIST"]==None:
-                no_black_list+=1
-            else:
+            if i["BLACK_LIST"]=='yes':
                 yes_black_list+=1
+            else:
+                no_black_list+=1
         text=f"""تعداد کل کاربران:{customer_num}
 تعداد کاربران مسدود شده :{yes_black_list}
 تعداد کاربران مسدود نه شده :{no_black_list}
@@ -788,9 +788,14 @@ def all_callback_query_handler(call):
         customer_data=get_customer_data(customer_id)
         markup=InlineKeyboardMarkup()
         if check_black_list(customer_id)==False:
-            markup.add(InlineKeyboardButton(' مسدود کردن کاربر',callback_data=f'closed customer_{customer_data['id']}'))
+            markup.add(InlineKeyboardButton(' مسدود کردن کاربر',callback_data=f'closed customer_{customer_data['id']}'),
+                       InlineKeyboardButton('پاک کردن کاربر',callback_data=f'delete customer_{customer_data['id']}')
+                       )
         else:
-            markup.add(InlineKeyboardButton('برداشتن از مسدودیت',callback_data=f'unclosed customer_{customer_data['id']}'))
+            markup.add(InlineKeyboardButton('برداشتن از مسدودیت',callback_data=f'unclosed customer_{customer_data['id']}'),
+                       InlineKeyboardButton('پاک کردن کاربر',callback_data=f'delete customer_{customer_data['id']}')
+                       )
+        markup.add(InlineKeyboardButton(texts['back'],callback_data='customer_data'))
         project_num=0
         for i in get_sale_id_b_cid(customer_id):
             project_num+=1
@@ -801,6 +806,7 @@ def all_callback_query_handler(call):
  وضعیت مسدودیت :{'مسدود شده' if check_black_list(customer_id)==True else 'مسدود نشده'}
 """
         bot.edit_message_text(text,cid,mid,reply_markup=markup)
+
     elif data.startswith('closed customer'):
         _,customer_id=data.split('_')
         add_customer_black_list(customer_id)
@@ -810,6 +816,11 @@ def all_callback_query_handler(call):
         _,customer_id=data.split('_')
         came_customer_black_list(customer_id)
         bot.send_message(cid,'کاربر مورد نظر  با موفقیت لغو مسدودیت شد')
+
+    elif data.startswith('delete customer'):
+        _,customer_id=data.split('_')
+        delete_customer(customer_id)
+        bot.send_message(cid,'کاربر با موفقیت حذف شد')
 
     elif data.startswith('back'):
         _,to=data.split('_')

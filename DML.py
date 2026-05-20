@@ -152,3 +152,12 @@ def register_user(cid,name):
         conn.commit()
     cur.close()
     conn.close()
+
+
+def delete_customer(cid):
+    conn = mysql.connector.connect(**db_confing, database=database_name)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM CUSTOMER WHERE ID=%s", (cid,))
+    conn.commit()
+    cur.close()
+    conn.close()
