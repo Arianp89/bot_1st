@@ -189,8 +189,8 @@ def B_contact_us_handler(message):
         if customer_id!=None:
             bot.send_message(customer_id, f"پاسخ تیم پشتیبانی :\n{message_text}")
             send_message(cid, 'پاسخ شما با موفقیت برای کاربر ارسال شد', reply_markup=admin_markup())
-
-
+    user_step_contact_us.pop(cid)
+    user_step_contact_us.pop(customer_id)
 @bot.message_handler(func=lambda message:message.text==texts['about_us'])
 def message_about_us_handler(message):
     cid=message.chat.id
